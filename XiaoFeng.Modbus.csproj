@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;</TargetFrameworks>
+	  <OutputType>Library</OutputType>
+	  <Title>Modbus</Title>
+	  <Authors>Jacky</Authors>
+	  <Product>Modbus</Product>
+	  <Description>Modbus</Description>
+	  <Copyright>CopyRight @ 2023-2024 魔法精灵(www.eelf.cn) QQ:7092734 Email:jacky@eelf.cn</Copyright>
+	  <Company>魔法精灵</Company>
+	  <VersionPrefix>1.0</VersionPrefix>
+	  <VersionSuffix>0</VersionSuffix>
+	  <Version>$(VersionPrefix).$(VersionSuffix)</Version>
+	  <FileVersion>$(Version)</FileVersion>
+	  <AssemblyVersion>$(VersionPrefix)</AssemblyVersion>
+	  <ProductVersion>$(VersionPrefix)</ProductVersion>
+	  <Deterministic>false</Deterministic>
+	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	  <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+	  <SignAssembly>False</SignAssembly>
+	  <EnableNETAnalyzers>False</EnableNETAnalyzers>
+	  <GenerateDocumentationFile>True</GenerateDocumentationFile>
+	  <PackageProjectUrl>https://www.eelf.cn</PackageProjectUrl>
+	  <PackageIconUrl>http://nuget.fayelf.com/x.png</PackageIconUrl>
+	  <PackageTags>Modbus</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\XiaoFeng\XiaoFeng.csproj" />
+  </ItemGroup>
+</Project>
