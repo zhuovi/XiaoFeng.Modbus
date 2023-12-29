@@ -98,7 +98,7 @@ namespace XiaoFeng.Modbus.Client
         /// <summary>
         /// 字节序类型
         /// </summary>
-        public EndianType EndianType { get; set; } = EndianType.LITTLE;
+        public EndianType EndianType { get; set; } = EndianType.BIG;
         /// <summary>
         /// 校验类型
         /// </summary>
@@ -114,7 +114,13 @@ namespace XiaoFeng.Modbus.Client
         {
             if (EndPoint == null) return await Task.FromResult(false);
             if (Client == null)
+            {
                 Client = new SocketClient(EndPoint);
+                Client.OnClientError += (c, e,m) =>
+                {
+                    LogHelper.Error(m, $"{e}");
+                };
+            }
             else
                 Client.EndPoint = EndPoint;
             if (IsConnected && Client.Connected) return await Task.FromResult(true);
@@ -143,31 +149,27 @@ namespace XiaoFeng.Modbus.Client
                 Request = command
             };
             if (await ConnectAsync().ConfigureAwait(false))
-            {                
+            {
+                await this.Client.ClearPipeDataAsync();
+                Client.ClearData();
                 await Client.SendAsync(command).ConfigureAwait(false);
-                var bytes = await this.Client.ReceviceMessageAsync(new byte[8]).ConfigureAwait(false);
-                if (bytes == null)
+               
+                var bytes = await this.Client.ReceviceMessageAsync().ConfigureAwait(false);
+                if (bytes == null || bytes.Length == 0)
                 {
                     result.IsSuccessed = false;
                     result.ErrorMessage = "网络错误";
                     return result;
                 }
-                var length = bytes.ReadBytes(4, 5).ToUInt32().ToCast<int>();
-                if (packet.Code == FunctionCodes.ReadCoils || packet.Code == FunctionCodes.ReadInputDiscreteQuantity || packet.Code == FunctionCodes.WriteCoils)
-                {
-                    length = length / 8 + (length % 8 == 0 ? 0 : 1);
-                }
-                else if (packet.Code == FunctionCodes.ReadHoldingRegisters || packet.Code == FunctionCodes.ReadInputRegister || packet.Code == FunctionCodes.WriteRegisters || packet.Code == FunctionCodes.ReadFileRecord || packet.Code == FunctionCodes.WriteFileRecord || packet.Code == FunctionCodes.ReadWriteMultipleRegisters)
-                {
-                    length = 2 * length;
-                }
-                var bytes2 = await this.Client.ReceviceMessageAsync(new byte[length - 2]).ConfigureAwait(false);
-                result.Response = bytes.Concat(bytes2).ToArray();
+                var length = bytes.ReadBytes(4, 2).ToUInt16(false);
+                result.Response = bytes;
                 var ResPacket = new ModbusTcpRequestPacket(result.Response, packet);
-                if (packet.TransactionFlags != ResPacket.TransactionFlags || packet.ProtocolFlags != ResPacket.ProtocolFlags || packet.Host != ResPacket.Host)
+                if (packet.TransactionFlags != ResPacket.TransactionFlags || packet.Address != ResPacket.Address || packet.Host != ResPacket.Host)
                 {
                     result.IsSuccessed = false;
                     result.ErrorMessage = "响应数据不正确";
+                    Console.WriteLine(packet.ToJson());
+                    Console.WriteLine(ResPacket.ToJson());
                     return result;
                 }
                 if (ResPacket.Code == 0 && ResPacket.ErroCode > 0)
@@ -246,20 +248,20 @@ namespace XiaoFeng.Modbus.Client
         /// <param name="count">读取长度</param>
         /// <param name="host">主机</param>
         /// <returns></returns>
-        public async Task<byte[]> ReadHoldingRegistersAsync(ushort address, ushort count, byte host = 1)
+        public async Task<ResultModel<byte[]>> ReadHoldingRegistersAsync(ushort address, ushort count, byte host = 1)
         {
-            if (count < ModbusHelper.REGISTER_MIN_COUNT || count > ModbusHelper.REGISTER_MAX_COUNT) return Array.Empty<byte>();
+            if (count < ModbusHelper.REGISTER_MIN_COUNT || count > ModbusHelper.REGISTER_MAX_COUNT) return ResultModel<byte[]>.Error("读取寄存器数量不合法.");
             var packet = new ModbusTcpRequestPacket()
             {
                 Code = FunctionCodes.ReadHoldingRegisters,
                 TransactionFlags = ModbusHelper.GetCheckHeader().ToUInt16(),
                 Address = address,
-                Count = count,
-                Host = host
+                Count = (ushort)Math.Ceiling((float)count / 2),
+                Host = host,
+                EndianType = this.EndianType
             };
             var result = await SendCommandAsync(packet).ConfigureAwait(false);
-            if (!result.IsSuccessed) return await Task.FromResult(Array.Empty<byte>());
-            return await Task.FromResult(result.Value);
+            return await Task.FromResult(result);
         }
         #endregion
 

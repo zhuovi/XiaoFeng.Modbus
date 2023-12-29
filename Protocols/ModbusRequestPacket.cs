@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using XiaoFeng.IO;
+using XiaoFeng.Modbus.Internal;
 using XiaoFeng.Modbus.Packets;
 
 /****************************************************************
@@ -119,15 +121,15 @@ namespace XiaoFeng.Modbus.Protocols
                         length = 2 * length;
                     }*/
                     if (this.Reader.RemainingLength >= length)
-                        this.Data = this.Reader.ReadBytes(length);
+                        this.Data = this.Reader.ReadBytes(length).ByteFormatting(this.EndianType, false);
                 }
                 else
                 {
                     if (this.Reader.RemainingLength < 2) return;
-                    this.Address = this.Reader.ReadBytes(2).ToUInt16();
+                    this.Address = this.Reader.ReadBytes(2).ToUInt16(false);
 
                     if (this.Reader.RemainingLength < 2) return;
-                    this.Count = this.Reader.ReadBytes(2).ToUInt16();
+                    this.Count = this.Reader.ReadBytes(2).ToUInt16(false);
                 }
                 if (!this.Reader.EndOfStream)
                     this.VerificationCode = this.Reader.ReadBytes();

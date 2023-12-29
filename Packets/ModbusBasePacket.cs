@@ -52,6 +52,10 @@ namespace XiaoFeng.Modbus.Packets
         /// </summary>
         public RequestType RequestType { get => this._RequestType; }
         /// <summary>
+        /// 字节序类型
+        /// </summary>
+        public EndianType EndianType { get; set; } = EndianType.BIG;
+        /// <summary>
         /// 主机
         /// </summary>
         public byte Host { get; set; } = 0x01;

@@ -48,21 +48,22 @@ namespace XiaoFeng.Modbus.Protocols
         ///<inheritdoc/>
         public override void WriterStream()
         {
-            this.Writer.WriteBytes(this.TransactionFlags.GetBytes());
-            this.Writer.WriteBytes(this.ProtocolFlags.GetBytes());
-            this.Writer.WriteBytes((6u + (ushort)(this.Data != null && this.Data.Length > 0 ? (this.Data.Length + 1) : 0)).GetBytes());
+            this.Writer.WriteBytes(this.TransactionFlags.GetBytes(false));
+            this.Writer.WriteBytes(this.ProtocolFlags.GetBytes(false));
+            var length = (ushort)((ushort)6 + (ushort)(this.Data != null && this.Data.Length > 0 ? (this.Data.Length + 1) : 0));
+            this.Writer.WriteBytes(length.GetBytes(false));
         }
         ///<inheritdoc/>
         public override bool ReaderStream()
         {
             if (this.Reader.RemainingLength < 2) return false;
-            this.TransactionFlags = this.Reader.ReadBytes(2).ToUInt16();
+            this.TransactionFlags = this.Reader.ReadBytes(2).ToUInt16(false);
 
             if (this.Reader.RemainingLength < 2) return false;
-            this.ProtocolFlags = this.Reader.ReadBytes(2).ToUInt16();
+            this.ProtocolFlags = this.Reader.ReadBytes(2).ToUInt16(false);
 
             if (this.Reader.RemainingLength < 2) return false;
-            this.Length = this.Reader.ReadBytes(2).ToUInt16();
+            this.Length = this.Reader.ReadBytes(2).ToUInt16(false);
             return true;
         }
         /// <summary>
