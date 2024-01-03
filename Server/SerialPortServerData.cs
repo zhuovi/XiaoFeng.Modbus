@@ -32,6 +32,7 @@ namespace XiaoFeng.Modbus.Server
         {
             this.Coils = new List<CoilModel>();
             this.Registers = new List<RegisterModel>();
+            this.Discretes = new List<CoilModel>();
         }
         #endregion
 
@@ -40,6 +41,10 @@ namespace XiaoFeng.Modbus.Server
         /// 单线圈数据
         /// </summary>
         public List<CoilModel> Coils { get; set; }
+        /// <summary>
+        /// 离散量输入数据
+        /// </summary>
+        public List<CoilModel> Discretes { get; set; }
         /// <summary>
         /// 寄存器数据
         /// </summary>
@@ -60,6 +65,38 @@ namespace XiaoFeng.Modbus.Server
             if (address + count > Math.Min(ModbusHelper.ADDRESS_MAX, this.Coils.Count)) return Array.Empty<byte>();
 
             var cs = this.Coils.Skip(address).Take(count).ToList();
+            var length = (int)Math.Ceiling(count / 8f);
+            var bytes = new byte[length];
+            for (var i = 0; i < length; i++)
+            {
+                var bs = "";
+                for (var j = 0; j < 8; j++)
+                {
+                    var _index = i * 8 + j;
+                    if (_index < count)
+                    {
+                        var a = cs[_index];
+                        bs += a.Value == 0 ? '0' : '1';
+                    }
+                }
+                bs = bs.PadRight(8, '0');
+                bytes[i] = Convert.ToByte(bs, 2);
+            }
+            return bytes;
+        }
+        /// <summary>
+        /// 读线圈
+        /// </summary>
+        /// <param name="address">地址</param>
+        /// <param name="count">读取线圈数量</param>
+        /// <returns></returns>
+        public byte[] ReadDiscrete(ushort address, ushort count)
+        {
+            if (address < ModbusHelper.ADDRESS_MIN || address > ModbusHelper.ADDRESS_MAX || this.Discretes == null || !this.Discretes.Any()) return Array.Empty<byte>();
+
+            if (address + count > Math.Min(ModbusHelper.ADDRESS_MAX, this.Discretes.Count)) return Array.Empty<byte>();
+
+            var cs = this.Discretes.Skip(address).Take(count).ToList();
             var length = (int)Math.Ceiling(count / 8f);
             var bytes = new byte[length];
             for (var i = 0; i < length; i++)

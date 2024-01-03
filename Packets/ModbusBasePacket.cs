@@ -81,7 +81,7 @@ namespace XiaoFeng.Modbus.Packets
         /// <summary>
         /// 错误码
         /// </summary>
-        public ExceptionCodes ErroCode { get; set; }
+        public ExceptionCodes ErrorCode { get; set; }
         /// <summary>
         /// 地址
         /// </summary>

@@ -70,9 +70,12 @@ Cake
 
 # 更新日志
 
-## 2023-12-27   v 1.0.0
+## 2023-12-29   v 1.0.0
+
 1.实现了Modbus Client RTU TCP
+
 2.实现在Modbus Server RTU TCP
+
 3.自动缓存服务端数据
 
 

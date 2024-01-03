@@ -172,11 +172,11 @@ namespace XiaoFeng.Modbus.Client
                     Console.WriteLine(ResPacket.ToJson());
                     return result;
                 }
-                if (ResPacket.Code == 0 && ResPacket.ErroCode > 0)
+                if (ResPacket.Code == 0 && ResPacket.ErrorCode > 0)
                 {
                     result.IsSuccessed = false;
-                    result.ErrorCode = ResPacket.ErroCode;
-                    result.ErrorMessage = ResPacket.ErroCode.GetDescription();
+                    result.ErrorCode = ResPacket.ErrorCode;
+                    result.ErrorMessage = ResPacket.ErrorCode.GetDescription();
                     return result;
                 }
                 if (result.IsSuccessed)

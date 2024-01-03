@@ -76,6 +76,9 @@ namespace XiaoFeng.Modbus.Server
         #endregion
 
         #region 方法
+        /// <summary>
+        /// 初始化
+        /// </summary>
         public void Init()
         {
             if (Server == null)

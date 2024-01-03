@@ -135,7 +135,7 @@ namespace XiaoFeng.Modbus.Client
             }
             if (bytes[0] == address)
             {
-                var checkcrc = ModbusCRC.CRC(bytes, 0, bytes.Length - 2);
+                var checkcrc = bytes.Encode(0, bytes.Length - 2, this.VerificationType, this.EndianType, this.VerificationAlgorithm).ToUInt16();
                 var crc2 = bytes.ToUInt16(bytes.Length - 2);
                 if (checkcrc != crc2) return Array.Empty<byte>();
                 return bytes.ReadBytes(2, bytes.Length - 2 - 2);
@@ -186,11 +186,11 @@ namespace XiaoFeng.Modbus.Client
                 result.ErrorMessage = "响应数据不正确";
                 return result;
             }
-            if (ResPacket.Code == 0 && ResPacket.ErroCode > 0)
+            if (ResPacket.Code == 0 && ResPacket.ErrorCode > 0)
             {
                 result.IsSuccessed = false;
-                result.ErrorCode = ResPacket.ErroCode;
-                result.ErrorMessage = ResPacket.ErroCode.GetDescription();
+                result.ErrorCode = ResPacket.ErrorCode;
+                result.ErrorMessage = ResPacket.ErrorCode.GetDescription();
                 return result;
             }
             if (result.IsSuccessed)

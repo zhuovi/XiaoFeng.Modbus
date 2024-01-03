@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO.Ports;
 using System.Text;
 using XiaoFeng.Modbus.Internal;
+using XiaoFeng.Modbus.Protocols;
 
 /****************************************************************
 *  Copyright © (2023) www.eelf.cn All Rights Reserved.          *
@@ -46,7 +47,7 @@ namespace XiaoFeng.Modbus.Server
             {
                 var requestData = new byte[this.Serial.BytesToRead];
                 this.Serial.Read(requestData, 0, requestData.Length);
-
+                var packet = new ModbusRtuResponsePacket(requestData, null);
             };
             this.SerialErrorReceived += (sender, e) =>
             {

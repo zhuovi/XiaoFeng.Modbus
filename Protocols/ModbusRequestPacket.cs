@@ -100,12 +100,12 @@ namespace XiaoFeng.Modbus.Protocols
             if (code > 0x80)
             {
                 this.Code = (FunctionCodes)(code - 0x80);
-                this.ErroCode = (ExceptionCodes)this.Reader.ReadByte();
+                this.ErrorCode = (ExceptionCodes)this.Reader.ReadByte();
             }
             else
             {
                 this.Code = (FunctionCodes)code;
-                this.ErroCode = 0;
+                this.ErrorCode = 0;
                 if (this.RequestType == RequestType.READ)
                 {
                     if (this.Reader.RemainingLength < 1) return;
@@ -129,7 +129,14 @@ namespace XiaoFeng.Modbus.Protocols
                     this.Address = this.Reader.ReadBytes(2).ToUInt16(false);
 
                     if (this.Reader.RemainingLength < 2) return;
-                    this.Count = this.Reader.ReadBytes(2).ToUInt16(false);
+                    if (this.Code == FunctionCodes.WriteCoil || this.Code == FunctionCodes.WriteRegister)
+                    {
+                        this.Data = this.Reader.ReadBytes(2);
+                    }
+                    else
+                    {
+                        this.Count = this.Reader.ReadBytes(2).ToUInt16(false);
+                    }
                 }
                 if (!this.Reader.EndOfStream)
                     this.VerificationCode = this.Reader.ReadBytes();

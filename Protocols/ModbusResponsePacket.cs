@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Ports;
+using System.Linq;
 using System.Text;
 using XiaoFeng.IO;
+using XiaoFeng.Modbus.Internal;
 using XiaoFeng.Modbus.Packets;
+using XiaoFeng.Modbus.Server;
 
 /****************************************************************
 *  Copyright © (2023) www.eelf.cn All Rights Reserved.          *
@@ -41,17 +45,74 @@ namespace XiaoFeng.Modbus.Protocols
             this.ModbusType = ModbusType.Request;
             this.UnPacket();
         }
+        /// <summary>
+        /// 初始化一个新实例
+        /// </summary>
+        /// <param name="data">数据</param>
+        /// <param name="serialPortServerData">服务端数据</param>
+        public ModbusResponsePacket(byte[] data,SerialPortServerData serialPortServerData)
+        {
+            this.Reader = new MemoryBufferReader(data);
+            this.ModbusType= ModbusType.Request;
+            this.ServerData = serialPortServerData;
+            this.UnPacket();
+        }
         #endregion
 
         #region 属性
-
+        /// <summary>
+        /// 服务端数据
+        /// </summary>
+        public SerialPortServerData ServerData { get; set; }
         #endregion
 
         #region 方法
         ///<inheritdoc/>
         public override byte[] ToArray()
         {
-            return Array.Empty<byte>();
+            if (this.Writer == null) this.Writer = new MemoryBufferWriter();
+            if (this.ServerData == null) return this.WriteError();
+            this.Writer.WriteByte(this.Host);
+            this.Writer.WriteByte((byte)this.Code);
+
+            if(this.RequestType== RequestType.READ)
+            {
+                if (this.Code == FunctionCodes.ReadCoils)
+                {
+                    if (this.ServerData.Coils == null) return this.WriteError();
+                    this.Data = this.ServerData.ReadCoil(this.Address, this.Count);
+                }
+                else if (this.Code == FunctionCodes.ReadInputDiscreteQuantity)
+                {
+                    if (this.ServerData.Discretes == null) return this.WriteError();
+                    this.Data = this.ServerData.ReadDiscrete(this.Address, this.Count);
+                }
+                else if (this.Code == FunctionCodes.ReadHoldingRegisters || this.Code == FunctionCodes.ReadInputRegister)
+                {
+                    if (this.ServerData.Registers == null) return this.WriteError();
+                    this.Data = this.ServerData.ReadRegister(this.Address, this.Count);
+                }
+
+                this.Writer.WriteByte((byte)this.Data.Length);
+                this.Writer.WriteBytes(this.Data);
+            }
+            else
+            {
+                this.Writer.WriteBytes(this.Address.GetBytes(false));
+                if (this.Code == FunctionCodes.WriteCoil || this.Code == FunctionCodes.WriteRegister)
+                {
+                    this.Writer.WriteBytes(this.Data);
+                }
+                else
+                {
+                    this.Writer.WriteBytes(this.Count.GetBytes(false));
+                }
+            }
+            var bytes = this.Writer.ToArray();
+            var crc = bytes.Encode(0, bytes.Length, VerificationType.ModbusCRC16, EndianType.BIG, null);
+            this.Writer.Clear();
+            this.Writer.WriteBytes(crc);
+            return this.Writer.ToArray();
         }
         ///<inheritdoc/>
         public override void UnPacket()
@@ -66,40 +127,42 @@ namespace XiaoFeng.Modbus.Protocols
             if (code > 0x80)
             {
                 this.Code = (FunctionCodes)(code - 0x80);
-                this.ErroCode = (ExceptionCodes)this.Reader.ReadByte();
+                this.ErrorCode = (ExceptionCodes)this.Reader.ReadByte();
             }
             else
             {
                 this.Code = (FunctionCodes)code;
-                this.ErroCode = 0;
-                var key = $"{this.Host}-key";
-                switch (this.Code)
+                this.ErrorCode = 0;
+
+                if (this.Reader.RemainingLength < 2) return;
+                this.Address = this.Reader.ReadBytes(2).ToUInt16();
+
+                if(this.RequestType== RequestType.WRITE)
                 {
-                    case FunctionCodes.ReadCoils://1
+                    if(this.Code== FunctionCodes.WriteCoil)
+                    {
 
-                        break;
-                    case FunctionCodes.ReadInputDiscreteQuantity://2
+                    }
+                    else
+                    {
+                        if (this.Reader.RemainingLength < 2) return;
+                        this.Count = this.Reader.ReadBytes(2).ToUInt16();
 
-                        break;
-                    case FunctionCodes.ReadHoldingRegisters://3
-
-                        break;
-                    case FunctionCodes.ReadInputRegister://4
-
-                        break;
-                    case FunctionCodes.WriteCoil://5
-
-                        break;
-                    case FunctionCodes.WriteRegister://6
-
-                        break;
-                    case FunctionCodes.WriteCoils://15
-
-                        break;
-                    case FunctionCodes.WriteRegisters://16
-
-                        break;
+                        if (this.Reader.RemainingLength < 1) return;
+                        this.Length = this.Reader.ReadByte();
+                    }
+                    if (this.Reader.RemainingLength < this.Length) return;
+                    this.Data = this.Reader.ReadBytes(this.Length);
                 }
+                else
+                {
+                    if (this.Reader.RemainingLength < 2) return;
+                    this.Count = this.Reader.ReadBytes(2).ToUInt16();
+                }
+                if (!this.Reader.EndOfStream)
+                    this.VerificationCode = this.Reader.ReadBytes();
+                return;
+
                 if (this.RequestType == RequestType.READ)
                 {
                     if (this.Reader.RemainingLength < 1) return;
@@ -119,14 +182,22 @@ namespace XiaoFeng.Modbus.Protocols
                 else
                 {
                     if (this.Reader.RemainingLength < 2) return;
-                    this.Address = this.Reader.ReadBytes(2).ToUInt16();
-
-                    if (this.Reader.RemainingLength < 2) return;
                     this.Count = this.Reader.ReadBytes(2).ToUInt16();
                 }
                 if (!this.Reader.EndOfStream)
                     this.VerificationCode = this.Reader.ReadBytes();
             }
+        }
+        /// <summary>
+        /// 输出错误响应数据
+        /// </summary>
+        /// <returns></returns>
+        public byte[] WriteError()
+        {
+            this.Writer.Clear();
+            this.Writer.WriteByte((byte)(this.Count + 0x80));
+            this.Writer.WriteByte((byte)ExceptionCodes.SlaveDeviceFailure);
+            return this.Writer.ToArray();
         }
         #endregion
     }
